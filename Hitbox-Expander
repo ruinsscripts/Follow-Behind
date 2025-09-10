@@ -1,0 +1,236 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Make sure GUI persists after death
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "HitboxGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui  -- Parent to CoreGui so it never resets
+
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 300, 0, 200)
+Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+Frame.BackgroundTransparency = 0.1
+Frame.BackgroundColor3 = Color3.fromRGB(255, 182, 193)
+
+local UIGradient = Instance.new("UIGradient", Frame)
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 210, 220)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 120, 160))
+}
+UIGradient.Rotation = 90
+
+local UICorner = Instance.new("UICorner", Frame)
+UICorner.CornerRadius = UDim.new(0, 16)
+
+local UIStroke = Instance.new("UIStroke", Frame)
+UIStroke.Color = Color3.fromRGB(200, 100, 130)
+UIStroke.Thickness = 2
+UIStroke.Transparency = 0.3
+
+local Header = Instance.new("Frame", Frame)
+Header.Size = UDim2.new(1, 0, 0, 35)
+Header.BackgroundColor3 = Color3.fromRGB(255, 140, 180)
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 16)
+
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(1, -100, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.Text = "🍒 Hitbox Expander"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+
+local MinimizeBtn = Instance.new("TextButton", Header)
+MinimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+MinimizeBtn.Position = UDim2.new(1, -60, 0.5, -12)
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.new(1,1,1)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 180)
+Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 8)
+
+local CloseBtn = Instance.new("TextButton", Header)
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Position = UDim2.new(1, -30, 0.5, -12)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.new(1,1,1)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 80)
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
+
+local ToggleButton = Instance.new("TextButton", Frame)
+ToggleButton.Size = UDim2.new(1, -20, 0, 50)
+ToggleButton.Position = UDim2.new(0, 10, 0, 50)
+ToggleButton.Text = "Hitbox: OFF"
+ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 220, 230)
+ToggleButton.TextColor3 = Color3.new(0,0,0)
+ToggleButton.Font = Enum.Font.Gotham
+ToggleButton.TextSize = 16
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 12)
+
+local TextBox = Instance.new("TextBox", Frame)
+TextBox.Size = UDim2.new(1, -20, 0, 40)
+TextBox.Position = UDim2.new(0, 10, 1, -50)
+TextBox.PlaceholderText = "Enter Hitbox Size (e.g. 5)"
+TextBox.Text = ""
+TextBox.BackgroundColor3 = Color3.fromRGB(255, 240, 245)
+TextBox.TextColor3 = Color3.new(0,0,0)
+TextBox.Font = Enum.Font.Gotham
+TextBox.TextSize = 14
+Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 8)
+
+local Watermark = Instance.new("TextLabel", Frame)
+Watermark.Size = UDim2.new(1, -10, 0, 20)
+Watermark.Position = UDim2.new(0, 5, 1, -25)
+Watermark.Text = "@cisc0lz on TikTok"
+Watermark.TextColor3 = Color3.fromRGB(255, 255, 255)
+Watermark.TextTransparency = 0.3
+Watermark.Font = Enum.Font.Gotham
+Watermark.TextSize = 12
+Watermark.BackgroundTransparency = 1
+Watermark.TextXAlignment = Enum.TextXAlignment.Right
+
+-- Dragging
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    Frame.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Tween helper
+local function Tween(obj, props, time)
+    TweenService:Create(obj, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+
+-- Hitbox logic
+local HitboxEnabled = false
+local HitboxSize = 5
+
+local function ApplyHitbox(player)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = player.Character.HumanoidRootPart
+        hrp.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+        hrp.Transparency = 0.7
+        hrp.BrickColor = BrickColor.new("Really red")
+        hrp.Material = Enum.Material.Neon
+        hrp.CanCollide = false
+    end
+end
+
+local function ApplyAllHitboxes()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            ApplyHitbox(plr)
+            plr.CharacterAdded:Connect(function()
+                repeat task.wait() until plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+                if HitboxEnabled then
+                    ApplyHitbox(plr)
+                end
+            end)
+        end
+    end
+end
+
+-- Toggle Button
+ToggleButton.MouseButton1Click:Connect(function()
+    HitboxEnabled = not HitboxEnabled
+    if HitboxEnabled then
+        ToggleButton.Text = "Hitbox: ON"
+        Tween(ToggleButton, {BackgroundColor3 = Color3.fromRGB(180, 255, 200)}, 0.3)
+        ApplyAllHitboxes()
+    else
+        ToggleButton.Text = "Hitbox: OFF"
+        Tween(ToggleButton, {BackgroundColor3 = Color3.fromRGB(255, 220, 230)}, 0.3)
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                plr.Character.HumanoidRootPart.Size = Vector3.new(2,2,1)
+                plr.Character.HumanoidRootPart.Transparency = 1
+            end
+        end
+    end
+end)
+
+-- TextBox for size input
+TextBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local val = tonumber(TextBox.Text)
+        if val and val > 0 then
+            HitboxSize = val
+            if HitboxEnabled then
+                ApplyAllHitboxes()
+            end
+        end
+    end
+end)
+
+-- Minimize
+MinimizeBtn.MouseButton1Click:Connect(function()
+    if Frame.Size.Y.Offset > 40 then
+        Tween(Frame, {Size = UDim2.new(0, 300, 0, 40)}, 0.3)
+        ToggleButton.Visible = false
+        TextBox.Visible = false
+        Watermark.Visible = false
+        MinimizeBtn.Text = "+"
+    else
+        Tween(Frame, {Size = UDim2.new(0, 300, 0, 200)}, 0.3)
+        ToggleButton.Visible = true
+        TextBox.Visible = true
+        Watermark.Visible = true
+        MinimizeBtn.Text = "-"
+    end
+end)
+
+-- Close
+CloseBtn.MouseButton1Click:Connect(function()
+    Tween(Frame, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0)}, 0.4)
+    wait(0.4)
+    ScreenGui:Destroy()
+end)
+
+-- Reapply hitboxes on respawn
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function()
+        repeat task.wait() until plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+        if HitboxEnabled then
+            ApplyHitbox(plr)
+        end
+    end)
+end)
